@@ -6,8 +6,13 @@ edition = "2021"
 [dependencies]
 embedded-graphics = "0.8.1"
 limine = "0.5.0"
+spin = "0.10.0"
 volatile = "0.2.6"
 x86_64 = "0.15.2"
+
+[dependencies.lazy_static]
+version = "1.5.0"
+features = ["spin_no_std"]
 
 [profile.dev]
 panic = "abort"
@@ -17,5 +22,5 @@ panic = "abort"
 
 [[bin]]
 name = "blog_os"
-test = false
+test = true
 bench = false
