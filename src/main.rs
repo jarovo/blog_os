@@ -11,7 +11,6 @@ use limine::request::FramebufferRequest;
 use embedded_graphics::{
     pixelcolor::Rgb888,
     prelude::*,
-    primitives::Rectangle
 };
 
 use embedded_graphics::draw_target::DrawTarget;
@@ -95,7 +94,7 @@ fn main() -> ! {
     match fbs_ptr {
         None => writeln!(serial_writer, "No framebuffer found!").unwrap(),
         Some(fbs) => {
-            for mut fb in fbs.framebuffers() {
+            for fb in fbs.framebuffers() {
                 writeln!(serial_writer, "Framebuffer found!").unwrap();
                 writeln!(serial_writer, "address: {:#?}", fb.addr()).unwrap();
                 writeln!(serial_writer, "width: {}", fb.width()).unwrap();
