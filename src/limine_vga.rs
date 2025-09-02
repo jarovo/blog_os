@@ -104,10 +104,12 @@ impl Writer {
 
     fn refresh_display(&mut self) {
         for (i, line) in self.text_buffer.iter().enumerate() {
-            let y = (i + 1) * 10;
-            
-            let style = MonoTextStyle::new(&FONT_8X13, self.color_code);
-            Text::new(line, Point::new(0, y as i32), style).draw(&mut self.framebuffer).unwrap();        }
+            let font = FONT_8X13;
+            let y = (i + 1) * font.character_size.height as usize;
+
+            let style = MonoTextStyle::new(&font, self.color_code);
+            Text::new(line, Point::new(0, y as i32), style).draw(&mut self.framebuffer).unwrap();
+        }
     }
 
     pub fn write_string(&mut self, text: &str) {
