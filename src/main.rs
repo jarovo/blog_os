@@ -45,7 +45,9 @@ fn main() -> ! {
    let mut serial_writer = serial::Writer::new(0x3F8);
     writeln!(serial_writer, "Hello World from serial!").unwrap();
     println!("Hello World from VGA!");
-    println!("Hello World from limine VGA! Second line!");
+    for i in 0..100 {
+        println!("Line number {}", i);
+    }
     loop {}
     
 }
