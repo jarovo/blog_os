@@ -53,7 +53,7 @@ fn main() -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
     unsafe {
-        ALLOCATOR.lock().init(HEAP.as_mut_ptr(), HEAP_SIZE);
+        ALLOCATOR.lock().init(core::ptr::addr_of_mut!(HEAP).cast(), HEAP_SIZE);
     }
 
     main()
