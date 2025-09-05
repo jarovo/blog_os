@@ -1,27 +1,16 @@
 [package]
-name = "blog_os"
+name = "os"         # or any other name
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[build-dependencies]
+bootloader = { path = "../bootloader/" }
+test-kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }
+byteorder = { version = "1.5", default-features = false }
 
 [dependencies]
-embedded-graphics = "0.8.1"
-limine = "0.5.0"
-linked_list_allocator = "0.10.5"
-spin = "0.10.0"
-volatile = "0.2.6"
-x86_64 = "0.15.2"
+#ovmf-prebuilt = "0.1.0-alpha.1"
+ovmf-prebuilt = "0.2.3"
 
-[dependencies.lazy_static]
-version = "1.5.0"
-features = ["spin_no_std"]
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
-
-[[bin]]
-name = "blog_os"
-test = true
-bench = false
+[workspace]
+members = ["kernel"]
