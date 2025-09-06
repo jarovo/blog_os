@@ -1,7 +1,5 @@
 // src/main.rs
 
-use std::primitive;
-
 use ovmf_prebuilt::{Arch, FileType, Source, Prebuilt};
 
 fn main() {
@@ -26,8 +24,11 @@ fn main() {
         cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={uefi_path}"));
     } else {
         println!("Using BIOS image: {}", bios_path);
-        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={bios_path}")).arg("-serial").arg("stdio");
+        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={bios_path}"));        
     }
+    cmd.arg("-device").arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
+    cmd.arg("-serial").arg("stdio");
+
     print!("Starting QEMU: {:?}\n", cmd);
     let mut child = cmd.spawn().unwrap();
     child.wait().unwrap();

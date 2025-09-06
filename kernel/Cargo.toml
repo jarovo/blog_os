@@ -8,6 +8,7 @@ bootloader_api = "0.11"
 embedded-graphics = "0.8.1"
 limine = "0.5.0"
 linked_list_allocator = "0.10.5"
+qemu-exit = "3.0.2"
 spin = "0.10.0"
 volatile = "0.2.6"
 x86_64 = "0.15.2"
@@ -16,8 +17,18 @@ x86_64 = "0.15.2"
 version = "1.5.0"
 features = ["spin_no_std"]
 
+[lib]
+name = "libkernel"
+test = true
+bench = false
+
+
+[[test]]
+name = "tests"
+harness = false
+test = true
+
 [[bin]]
 name = "test-kernel"
-bench = false
-test = true
+test = false
 

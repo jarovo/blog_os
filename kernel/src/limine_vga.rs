@@ -18,6 +18,11 @@ use embedded_graphics::prelude::OriginDimensions;
 use limine::request::FramebufferRequest;
 use limine::framebuffer::Framebuffer as LimineFramebuffer;
 
+use lazy_static::lazy_static;
+
+use spin::Mutex;
+
+
 static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 
 
@@ -131,27 +136,7 @@ impl fmt::Write for Writer {
     }
 }
 
-use lazy_static::lazy_static;
-use spin::Mutex;
 
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 }
-
-
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::limine_vga::_print(format_args!($($arg)*)));
-}
-
-#[macro_export]
-macro_rules! println {
-    () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
-}
-
-#[doc(hidden)]
-pub fn _print(args: fmt::Arguments) {
-    WRITER.lock().write_fmt(args);
-}
-
