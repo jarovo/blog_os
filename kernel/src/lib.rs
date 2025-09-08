@@ -36,22 +36,31 @@ pub fn test_runner(tests: &[&UnitTest]) {
 }
 
 
-#[cfg(test)]
-#[unsafe(no_mangle)]
-fn kernel_init(boot_info: &bootloader_api::BootInfo) -> ! {
+fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
+
     println!("Boot info API version: {}.{}.{}",
              boot_info.api_version.version_major(),
              boot_info.api_version.version_minor(),
              boot_info.api_version.version_patch());
-    println!("All writes written now!");
 
-    test_main();
+    #[cfg(test)]
+    println!("All writes written now!");
 
     cpu::qemu_exit_success();
 }
 
+
+const CONFIG: bootloader_api::BootloaderConfig = {
+    let mut config = bootloader_api::BootloaderConfig::new_default();
+    config.kernel_stack_size = 100 * 1024; // 100 KiB
+    config
+};
+
+bootloader_api::entry_point!(kernel_init, config = &CONFIG);
+
+
 #[panic_handler]
-fn panic(info: &core::panic::PanicInfo) -> ! {
+pub fn panic(info: &core::panic::PanicInfo) -> ! { 
     println!("[failed]\n");
     println!("Error: {}\n", info);
     cpu::qemu_exit_failure();

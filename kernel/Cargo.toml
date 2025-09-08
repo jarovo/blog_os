@@ -16,10 +16,11 @@ features = ["spin_no_std"]
 
 [lib]
 name = "libkernel"
+
+[[test]]
+name = "test"
 test = true
-bench = false
 
 [[bin]]
 name = "test-kernel"
-test = false
-
+path = "src/main.rs"
