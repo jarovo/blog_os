@@ -5,7 +5,7 @@ edition = "2024"
 
 [build-dependencies]
 bootloader = { path = "../bootloader/" }
-test-kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }
+libkernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none", features = ["with-tests"] }
 byteorder = { version = "1.5", default-features = false }
 
 [dependencies]
@@ -14,3 +14,7 @@ ovmf-prebuilt = "0.2.3"
 
 [workspace]
 members = ["kernel"]
+
+[[bin]]
+name = "os"
+harness = false

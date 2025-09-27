@@ -4,36 +4,11 @@
 #![cfg_attr(test, no_main)]
 #![feature(custom_test_frameworks)]
 #![reexport_test_harness_main = "test_main"]
-#![test_runner(crate::test_runner)]
+#![test_runner(test_runner)]
 
 pub mod console;
 mod serial;
 pub mod cpu;
-
-/// Unit test container.
-pub struct UnitTest {
-    /// Name of the test.
-    pub name: &'static str,
-
-    /// Function pointer to the test.
-    pub test_func: fn(),
-}
-
-/// The default runner for unit tests.
-pub fn test_runner(tests: &[&UnitTest]) {
-    // This line will be printed as the test header.
-    println!("Running {} tests", tests.len());
-
-    for (i, test) in tests.iter().enumerate() {
-        print!("{:>3}. {:.<58}", i + 1, test.name);
-
-        // Run the actual test.
-        (test.test_func)();
-
-        // Failed tests call panic!(). Execution reaches here only if the test has passed.
-        println!("[ok]")
-    }
-}
 
 
 fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
@@ -44,11 +19,22 @@ fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
              boot_info.api_version.version_patch());
 
     #[cfg(test)]
+    {
+        println!("In test!");
+        //test_main();
+    }
     println!("All writes written now!");
 
     cpu::qemu_exit_success();
 }
 
+/// Entry point for `cargo test`
+#[cfg(test)]
+#[unsafe(no_mangle)]
+pub extern "C" fn _start() -> ! {
+    test_main();
+    loop {}
+}
 
 const CONFIG: bootloader_api::BootloaderConfig = {
     let mut config = bootloader_api::BootloaderConfig::new_default();
@@ -56,7 +42,40 @@ const CONFIG: bootloader_api::BootloaderConfig = {
     config
 };
 
+#[cfg(not(test))]
 bootloader_api::entry_point!(kernel_init, config = &CONFIG);
+
+
+
+
+// use hermit::{print, println};
+pub trait Testable {
+	fn run(&self) -> ();
+}
+
+impl<T> Testable for T
+where
+	T: Fn(),
+{
+	fn run(&self) {
+		print!("{}...\t", core::any::type_name::<T>());
+		self();
+		println!("[ok]");
+	}
+}
+
+pub fn test_runner(tests: &[&dyn Testable]) {
+	println!("Running {} tests", tests.len());
+	for test in tests {
+		test.run();
+	}
+}
+
+#[test_case]
+fn add_one() {
+	let x = 1 + 2;
+	assert_eq!(x, 3);
+}
 
 
 #[panic_handler]

@@ -1,5 +1,5 @@
 [package]
-name = "test-kernel"
+name = "libkernel"
 version = "0.1.0"
 edition = "2024"
 
@@ -16,11 +16,8 @@ features = ["spin_no_std"]
 
 [lib]
 name = "libkernel"
-
-[[test]]
-name = "test"
+path = "src/lib.rs"
 test = true
 
-[[bin]]
-name = "test-kernel"
-path = "src/main.rs"
+[features]
+with-tests = []
