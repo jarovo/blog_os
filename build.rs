@@ -4,9 +4,17 @@ use std::path::PathBuf;
 fn main() {
     // set by cargo, build scripts should use this directory for output files
     let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
-    // set by cargo's artifact dependency feature, see
-    // https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#artifact-dependencies
-    let kernel = PathBuf::from(std::env::var_os("CARGO_BIN_FILE_LIBKERNEL").unwrap());
+    
+    // Check if we have a custom kernel path (for testing), otherwise use the artifact dependency
+    let kernel = if let Some(custom_kernel) = std::env::var_os("CUSTOM_KERNEL_PATH") {
+        // Use our custom test-enabled kernel
+        println!("cargo:warning=Using custom kernel: {}", custom_kernel.to_string_lossy());
+        PathBuf::from(custom_kernel)
+    } else {
+        // Fallback to the artifact dependency (normal build)
+        println!("cargo:warning=Using artifact dependency kernel");
+        PathBuf::from(std::env::var_os("CARGO_BIN_FILE_LIBKERNEL").unwrap())
+    };
 
     // create an UEFI disk image (optional)
     let uefi_path = out_dir.join("uefi.img");

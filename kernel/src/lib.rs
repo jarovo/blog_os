@@ -5,35 +5,28 @@
 #![feature(custom_test_frameworks)]
 #![reexport_test_harness_main = "test_main"]
 #![test_runner(test_runner)]
+#![feature(abi_x86_interrupt)]
 
 pub mod console;
 mod serial;
 pub mod cpu;
-
+pub mod interrupts;
 
 fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
+    interrupts::init_idt();
 
     println!("Boot info API version: {}.{}.{}",
              boot_info.api_version.version_major(),
              boot_info.api_version.version_minor(),
              boot_info.api_version.version_patch());
 
-    #[cfg(test)]
+    #[cfg(feature = "with-tests")]
     {
-        println!("In test!");
-        //test_main();
+        println!("In test mode!");
+        run_tests();
     }
-    println!("All writes written now!");
-
+    
     cpu::qemu_exit_success();
-}
-
-/// Entry point for `cargo test`
-#[cfg(test)]
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    test_main();
-    loop {}
 }
 
 const CONFIG: bootloader_api::BootloaderConfig = {
@@ -42,10 +35,8 @@ const CONFIG: bootloader_api::BootloaderConfig = {
     config
 };
 
-#[cfg(not(test))]
+
 bootloader_api::entry_point!(kernel_init, config = &CONFIG);
-
-
 
 
 // use hermit::{print, println};
@@ -58,10 +49,20 @@ where
 	T: Fn(),
 {
 	fn run(&self) {
-		print!("{}...\t", core::any::type_name::<T>());
+		print!("{}... ", core::any::type_name::<T>());
 		self();
 		println!("[ok]");
 	}
+}
+
+fn add_one() {
+	let x = 1 + 2;
+	assert_eq!(x, 3);
+}
+
+fn test_breakpoint_exception() {
+    // invoke a breakpoint exception
+    x86_64::instructions::interrupts::int3();
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {
@@ -69,12 +70,17 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 	for test in tests {
 		test.run();
 	}
-}
+    println!("[test did not panic]");
+    }
 
-#[test_case]
-fn add_one() {
-	let x = 1 + 2;
-	assert_eq!(x, 3);
+#[cfg(feature = "with-tests")]
+pub fn run_tests() {
+    let tests: &[&dyn Testable] = &[
+        &test_breakpoint_exception,
+        &add_one,
+        // Add more test functions here as needed
+    ];
+    test_runner(tests);
 }
 
 
