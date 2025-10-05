@@ -22,12 +22,23 @@ fn main() {
         println!("Using UEFI image: {}", uefi_path);
         cmd.arg("-bios").arg(uefi_bios);
         cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={uefi_path}"));
+
     } else {
         println!("Using BIOS image: {}", bios_path);
         cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={bios_path}"));        
     }
     cmd.arg("-device").arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
     cmd.arg("-serial").arg("stdio");
+
+
+    if std::env::var_os("QEMU_GDB").is_some() {
+        eprintln!("QEMU GDB stub enabled on :1234 (CPU paused)");
+        cmd.args(["-S", "-gdb", "tcp::1234"]);
+        cmd.args(["-no-reboot", "-no-shutdown"]);
+        cmd.args(["-d", "int,guest_errors,cpu_reset"]);
+        cmd.args(["-accel", "tcg"]);
+    }
+
 
     print!("Starting QEMU: {:?}\n", cmd);
     let mut child = cmd.spawn().unwrap();

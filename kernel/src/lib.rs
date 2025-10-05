@@ -11,9 +11,12 @@ pub mod console;
 mod serial;
 pub mod cpu;
 pub mod interrupts;
+pub mod gdt;
 
 fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
+    gdt::init();
     interrupts::init_idt();
+
 
     println!("Boot info API version: {}.{}.{}",
              boot_info.api_version.version_major(),
@@ -26,7 +29,8 @@ fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         run_tests();
     }
     
-    cpu::qemu_exit_success();
+    println!("It did not crash!");
+    hlt_loop();
 }
 
 const CONFIG: bootloader_api::BootloaderConfig = {
@@ -55,14 +59,16 @@ where
 	}
 }
 
-fn add_one() {
-	let x = 1 + 2;
-	assert_eq!(x, 3);
-}
-
+#[cfg(feature = "with-tests")]
 fn test_breakpoint_exception() {
     // invoke a breakpoint exception
     x86_64::instructions::interrupts::int3();
+}
+
+
+#[cfg(feature = "with-tests")]
+fn test_trivial() {
+    assert_eq!(1, 1);
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {
@@ -71,22 +77,22 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 		test.run();
 	}
     println!("[test did not panic]");
-    }
+}
 
 #[cfg(feature = "with-tests")]
 pub fn run_tests() {
     let tests: &[&dyn Testable] = &[
         &test_breakpoint_exception,
-        &add_one,
+        &test_trivial,
         // Add more test functions here as needed
     ];
     test_runner(tests);
 }
 
 
-#[panic_handler]
-pub fn panic(info: &core::panic::PanicInfo) -> ! { 
-    println!("[failed]\n");
-    println!("Error: {}\n", info);
-    cpu::qemu_exit_failure();
+
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
 }

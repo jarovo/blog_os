@@ -26,3 +26,8 @@ harness = false
 
 [features]
 with-tests = []
+
+
+[[test]]
+name = "stack_overflow"
+harness = false
