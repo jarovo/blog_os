@@ -18,7 +18,8 @@ pub mod panicking;
 pub fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     gdt::init();
     interrupts::init_idt();
-
+    unsafe { interrupts::PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
 
     println!("Boot info API version: {}.{}.{}",
              boot_info.api_version.version_major(),
