@@ -7,13 +7,15 @@
 #![test_runner(test_runner)]
 #![feature(abi_x86_interrupt)]
 
+
 pub mod console;
 mod serial;
 pub mod cpu;
 pub mod interrupts;
 pub mod gdt;
+pub mod panicking;
 
-fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
+pub fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     gdt::init();
     interrupts::init_idt();
 
@@ -33,15 +35,11 @@ fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     hlt_loop();
 }
 
-const CONFIG: bootloader_api::BootloaderConfig = {
+pub const CONFIG: bootloader_api::BootloaderConfig = {
     let mut config = bootloader_api::BootloaderConfig::new_default();
     config.kernel_stack_size = 100 * 1024; // 100 KiB
     config
 };
-
-
-bootloader_api::entry_point!(kernel_init, config = &CONFIG);
-
 
 // use hermit::{print, println};
 pub trait Testable {
@@ -88,7 +86,6 @@ pub fn run_tests() {
     ];
     test_runner(tests);
 }
-
 
 
 pub fn hlt_loop() -> ! {

@@ -6,16 +6,10 @@ use libkernel::{print, println, cpu};
 use lazy_static::lazy_static;
 use x86_64::structures::idt::InterruptDescriptorTable;
 use x86_64::structures::idt::InterruptStackFrame;
+use core::panic::PanicInfo;
 
 
-const CONFIG: bootloader_api::BootloaderConfig = {
-    let mut config = bootloader_api::BootloaderConfig::new_default();
-    config.kernel_stack_size = 100 * 1024; // 100 KiB
-    config
-};
-
-
-bootloader_api::entry_point!(kernel_test_init, config = &CONFIG);
+bootloader_api::entry_point!(kernel_test_init, config = &libkernel::CONFIG);
 
 
 pub fn kernel_test_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
@@ -62,4 +56,3 @@ extern "x86-interrupt" fn test_double_fault_handler(
     println!("[ok]");
     cpu::qemu_exit_success();
 }
-
