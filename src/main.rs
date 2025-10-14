@@ -1,48 +1,46 @@
-#![no_std]
-#![no_main]
+// src/main.rs
+
+use ovmf_prebuilt::{Arch, FileType, Source, Prebuilt};
+
+fn main() {
+    // read env variables that were set in build script
+    let uefi_path = env!("UEFI_PATH");
+    let bios_path = env!("BIOS_PATH");
+    
+    // choose whether to start the UEFI or BIOS image
+    let uefi = false;
 
 
-use core::panic::PanicInfo;
-use core::fmt::Write;
-use limine::request::FramebufferRequest;
+    let prebuilt = Prebuilt::fetch(Source::LATEST, "target/ovmf")
+        .expect("failed to update prebuilt");
+    let uefi_bios = prebuilt.get_file(Arch::X64, FileType::Code);
 
+    let mut cmd = std::process::Command::new("/usr/libexec/qemu-kvm");
+    // let mut cmd = std::process::Command::new("qemu-system-x86_64");
+    if uefi {
+        println!("Using UEFI bios: {}", uefi_bios.display());
+        println!("Using UEFI image: {}", uefi_path);
+        cmd.arg("-bios").arg(uefi_bios);
+        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={uefi_path}"));
 
-mod serial;
-mod vga_buffer;
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    let mut serial_writer = serial::Writer::new(0x3F8);
-    writeln!(serial_writer, "Panic occurred: {}", _info).unwrap();
-    loop {}
-}
-
-static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
-
-fn main() -> ! {
-   let mut serial_writer = serial::Writer::new(0x3F8);
-    writeln!(serial_writer, "Hello World from serial!").unwrap();
-
-    let fbs_ptr = FRAMEBUFFER_REQUEST.get_response();
-
-    match fbs_ptr {
-        None => writeln!(serial_writer, "No framebuffer found!").unwrap(),
-        Some(fbs) => {
-            for fb in fbs.framebuffers() {
-                writeln!(serial_writer, "Framebuffer found!").unwrap();
-                writeln!(serial_writer, "address: {:#?}", fb.addr()).unwrap();
-                writeln!(serial_writer, "width: {}", fb.width()).unwrap();
-                writeln!(serial_writer, "height: {}", fb.height()).unwrap();
-                writeln!(serial_writer, "pitch: {}", fb.pitch()).unwrap();
-                writeln!(serial_writer, "bpp: {}", fb.bpp()).unwrap();
-            }
-        }
+    } else {
+        println!("Using BIOS image: {}", bios_path);
+        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={bios_path}"));        
     }
-    vga_buffer::print_something();
-    loop {}
-}
+    cmd.arg("-device").arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
+    cmd.arg("-serial").arg("stdio");
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    main()
+
+    if std::env::var_os("QEMU_GDB").is_some() {
+        eprintln!("QEMU GDB stub enabled on :1234 (CPU paused)");
+        cmd.args(["-S", "-gdb", "tcp::1234"]);
+        cmd.args(["-no-reboot", "-no-shutdown"]);
+        cmd.args(["-d", "int,guest_errors,cpu_reset"]);
+        cmd.args(["-accel", "tcg"]);
+    }
+
+
+    print!("Starting QEMU: {:?}\n", cmd);
+    let mut child = cmd.spawn().unwrap();
+    child.wait().unwrap();
 }
