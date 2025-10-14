@@ -17,4 +17,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Run tests
-      run: ./run_kernel_tests
+      run: ./run_kernel_tests.sh
