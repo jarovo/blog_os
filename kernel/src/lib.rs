@@ -7,24 +7,66 @@
 #![test_runner(test_runner)]
 #![feature(abi_x86_interrupt)]
 
+extern crate alloc; 
 
+pub mod allocator;
+mod memory;
 pub mod console;
 mod serial;
 pub mod cpu;
-pub mod interrupts;
+mod interrupts;
 pub mod gdt;
-pub mod panicking;
+mod panicking;
+use x86_64::{VirtAddr, structures::paging::Translate, structures::paging::Page, structures::paging::OffsetPageTable};
+use core::fmt::Write;
 
-pub fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
+
+fn kernel_init() {
     gdt::init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
+}
+
+pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
+
+    kernel_init();
+
+    let phys_mem_offset = VirtAddr::new(
+        boot_info.physical_memory_offset.into_option().expect("No physical memory offset"));
+    println!("Physical memory offset: {:#016x}", phys_mem_offset);
+
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_regions) };
+
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed.");
 
     println!("Boot info API version: {}.{}.{}",
              boot_info.api_version.version_major(),
              boot_info.api_version.version_minor(),
              boot_info.api_version.version_patch());
+
+    // Display memory regions.
+    for region in boot_info.memory_regions.iter() {
+        println!("Memory region: {:#016x} - {:#016x} ({:?})",
+                 region.start,
+                 region.end,
+                 region.kind);
+    }
+
+    print_mappings(boot_info, &mut mapper);
+
+    // Map an unused page.
+    let page = Page::containing_address(VirtAddr::new(0xdeadbeef000));
+    memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
+
+    let mut console = console::Console::new_from_bootinfo(
+        boot_info.framebuffer.as_mut().expect("Failed to create console: No framebuffer found"));
+
+    for i in 0..10 {
+        writeln!(console, "Hello World! {}", i).ok();
+    }
+ 
 
     #[cfg(feature = "with-tests")]
     {
@@ -36,9 +78,19 @@ pub fn kernel_init(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     hlt_loop();
 }
 
+
+fn print_mappings(boot_info: &bootloader_api::BootInfo, mapper: &OffsetPageTable) {
+        for address in boot_info.memory_regions.iter().map(|r| r.start) {
+        let virt = VirtAddr::new(address);
+        let phys = mapper.translate_addr(virt);
+        println!("{:?} -> {:?}", virt, phys);
+    }
+}
+
 pub const CONFIG: bootloader_api::BootloaderConfig = {
     let mut config = bootloader_api::BootloaderConfig::new_default();
     config.kernel_stack_size = 100 * 1024; // 100 KiB
+    config.mappings.physical_memory = Some(bootloader_api::config::Mapping::Dynamic);
     config
 };
 

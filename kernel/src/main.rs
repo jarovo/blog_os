@@ -2,6 +2,6 @@
 #![no_main]
 
 
-use libkernel::{kernel_init, CONFIG};
+use libkernel::{kernel_main, CONFIG};
 
-bootloader_api::entry_point!(kernel_init, config = &CONFIG);
+bootloader_api::entry_point!(kernel_main, config = &CONFIG);
