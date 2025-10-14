@@ -83,6 +83,8 @@ dependencies = [
 [[package]]
 name = "bootloader"
 version = "0.11.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61e418d2f8952e4a6d935d23ea038daed2fe7707b0118923f91e83bf1fbe64b3"
 dependencies = [
  "anyhow",
  "bootloader-boot-config",
@@ -97,6 +99,8 @@ dependencies = [
 [[package]]
 name = "bootloader-boot-config"
 version = "0.11.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cfbe7f4a5d9843a9a310712e64691f3c474546f02bed7a53ed81775a681d18e"
 dependencies = [
  "serde",
 ]
