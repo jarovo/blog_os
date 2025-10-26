@@ -1,12 +1,11 @@
-
+use crate::cpu::qemu_exit_failure;
 use crate::println;
-use crate::hlt_loop;
 
-use core::panic::PanicInfo;
+use nostd::panic::PanicInfo;
 
 
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+pub fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    hlt_loop();
+    qemu_exit_failure();
 }

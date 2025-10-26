@@ -81,6 +81,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "blog_os"
+version = "0.1.0"
+dependencies = [
+ "bootloader",
+ "byteorder",
+ "ovmf-prebuilt",
+ "rustyk",
+]
+
+[[package]]
 name = "bootloader"
 version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -412,25 +422,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
-name = "libkernel"
-version = "0.1.0"
-dependencies = [
- "bootloader_api",
- "embedded-graphics",
- "lazy_static",
- "linked_list_allocator",
- "nostd",
- "pc-keyboard",
- "pic8259",
- "qemu-exit",
- "spin 0.10.0",
- "uefi",
- "vga",
- "volatile 0.2.7",
- "x86_64 0.15.2",
-]
-
-[[package]]
 name = "libredox"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -546,16 +537,6 @@ name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
-
-[[package]]
-name = "os"
-version = "0.1.0"
-dependencies = [
- "bootloader",
- "byteorder",
- "libkernel",
- "ovmf-prebuilt",
-]
 
 [[package]]
 name = "ovmf-prebuilt"
@@ -732,6 +713,25 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "rustyk"
+version = "0.1.0"
+dependencies = [
+ "bootloader_api",
+ "embedded-graphics",
+ "lazy_static",
+ "linked_list_allocator",
+ "nostd",
+ "pc-keyboard",
+ "pic8259",
+ "qemu-exit",
+ "spin 0.10.0",
+ "uefi",
+ "vga",
+ "volatile 0.2.7",
+ "x86_64 0.15.2",
+]
 
 [[package]]
 name = "ryu"

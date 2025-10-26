@@ -1,46 +1,63 @@
 // src/main.rs
 
-use ovmf_prebuilt::{Arch, FileType, Source, Prebuilt};
+use std::path::PathBuf;
+
+
+fn run(vm_name: &str, bios_path: &str) -> Result<(), std::io::Error> {
+    let mut cmd = std::process::Command::new("virt-install");
+    let log_path= PathBuf::from(format!("/tmp/{}.serial.log", vm_name));
+    cmd.args(&[
+        "--name", vm_name,
+        "--serial", format!("file,path={}", log_path.display()).as_str(),
+        "--transient",
+        "--arch", "x86_64",
+        "--osinfo", "unknown",
+        "--memory", "1024",
+        "--import", "--disk", bios_path,
+        "--security", "type=none",
+        "--qemu-commandline", "--device isa-debug-exit,iobase=0xf4,iosize=0x04",
+    ]);
+    cmd.spawn()?.wait()?.success().then(|| { check_serial_log(log_path) }).unwrap_or_else(|| {
+        Err(std::io::Error::new(std::io::ErrorKind::Other, "VM execution failed"))
+    })
+}
+
+fn check_serial_log(log_path: PathBuf) -> Result<(), std::io::Error> {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+
+    let file = File::open(log_path)?;
+    let reader = BufReader::new(file);
+
+    
+    for line in reader.lines() {
+        let line = line?;
+        if line.contains("OK1234") {
+            println!("Test passed: found OK1234 in serial log.");
+            return Ok(());
+        }
+    }
+
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "Test failed: OK1234 not found in serial log."))
+}
 
 fn main() {
-    // read env variables that were set in build script
-    let uefi_path = env!("UEFI_PATH");
-    let bios_path = env!("BIOS_PATH");
-    
-    // choose whether to start the UEFI or BIOS image
-    let uefi = false;
+    run("rustyk_vm", env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_kernel")).unwrap();
+}
 
 
-    let prebuilt = Prebuilt::fetch(Source::LATEST, "target/ovmf")
-        .expect("failed to update prebuilt");
-    let uefi_bios = prebuilt.get_file(Arch::X64, FileType::Code);
+#[cfg(test)]
+mod tests {
 
-    let mut cmd = std::process::Command::new("/usr/libexec/qemu-kvm");
-    // let mut cmd = std::process::Command::new("qemu-system-x86_64");
-    if uefi {
-        println!("Using UEFI bios: {}", uefi_bios.display());
-        println!("Using UEFI image: {}", uefi_path);
-        cmd.arg("-bios").arg(uefi_bios);
-        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={uefi_path}"));
-
-    } else {
-        println!("Using BIOS image: {}", bios_path);
-        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={bios_path}"));        
-    }
-    cmd.arg("-device").arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
-    cmd.arg("-serial").arg("stdio");
-
-
-    if std::env::var_os("QEMU_GDB").is_some() {
-        eprintln!("QEMU GDB stub enabled on :1234 (CPU paused)");
-        cmd.args(["-S", "-gdb", "tcp::1234"]);
-        cmd.args(["-no-reboot", "-no-shutdown"]);
-        cmd.args(["-d", "int,guest_errors,cpu_reset"]);
-        cmd.args(["-accel", "tcg"]);
+    #[test]
+    fn heap_allocation() {
+        super::run("rustyk_test_vm_heap_allocation",
+        env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_test_heap_allocation")).unwrap();
     }
 
-
-    print!("Starting QEMU: {:?}\n", cmd);
-    let mut child = cmd.spawn().unwrap();
-    child.wait().unwrap();
+    #[test]
+    fn stack_overflow() {
+        super::run("rustyk_test_vm_stack_overflow",
+        env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_test_stack_overflow")).unwrap();
+    }
 }

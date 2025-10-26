@@ -1,5 +1,5 @@
 /* Inspired by https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials/blob/master/12_integrated_testing/README.md */
-
+#![no_main]
 #![no_std]
 #![cfg_attr(test, no_main)]
 #![feature(custom_test_frameworks)]
@@ -10,18 +10,21 @@
 extern crate alloc; 
 
 pub mod allocator;
-mod memory;
+pub mod memory;
 pub mod console;
 mod serial;
 pub mod cpu;
 mod interrupts;
 pub mod gdt;
-mod panicking;
+pub mod panicking;
 use x86_64::{VirtAddr, structures::paging::Translate, structures::paging::Page, structures::paging::OffsetPageTable};
 use core::fmt::Write;
+pub mod test;
+
+use crate::cpu::qemu_exit_success;
 
 
-fn kernel_init() {
+pub fn kernel_init() {
     gdt::init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
@@ -75,7 +78,7 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     }
     
     println!("It did not crash!");
-    hlt_loop();
+    qemu_exit_success();
 }
 
 

@@ -2,6 +2,6 @@
 #![no_main]
 
 
-use libkernel::{kernel_main, CONFIG};
+use rustyk::{kernel_main, CONFIG};
 
 bootloader_api::entry_point!(kernel_main, config = &CONFIG);
