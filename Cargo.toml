@@ -1,20 +1,19 @@
 [package]
-name = "os"         # or any other name
+name = "blog_os"         # or any other name
 version = "0.1.0"
 edition = "2024"
 
 [build-dependencies]
-bootloader = "0.11"
-libkernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none", features = ["with-tests"] }
+rustyk = { path = "kernel", artifact = [
+                "bin:kernel",
+                "bin:test_heap_allocation",
+                "bin:test_stack_overflow"
+              ], target = "x86_64-unknown-none" } # , features = ["with-tests"] 
 byteorder = { version = "1.5", default-features = false }
+bootloader = "0.11.12"
 
 [dependencies]
-#ovmf-prebuilt = "0.1.0-alpha.1"
 ovmf-prebuilt = "0.2.3"
 
 [workspace]
 members = ["kernel"]
-
-[[bin]]
-name = "os"
-harness = false

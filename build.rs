@@ -1,41 +1,63 @@
+#![feature(yield_expr, gen_blocks)]
 
-use std::path::PathBuf;
+use std::{env::{VarsOs}, error::Error, path::PathBuf, process::ExitCode};
 
-fn main() {
-    // Re-run if the selected kernel path changes
-    println!("cargo:rerun-if-env-changed=CUSTOM_KERNEL_PATH");
+// Filter the built kernels from environment variables
+fn get_kernels(env_vars: VarsOs) -> impl Iterator<Item = (String, PathBuf)> {
+    gen {
+        let mut kernels = env_vars.filter_map(| (k, v) | {
+            k.into_string().ok().and_then(|s| {
+                s.starts_with("CARGO_BIN_FILE_RUSTYK").then(|| (s, v))
+            })
+        });
+        for (os_key, os_value) in kernels {
+            let p = PathBuf::from(os_value);
+            let abs = std::fs::canonicalize(&p).expect("Failed to canonicalize kernel path");
+            println!("cargo:warning=Using artifact kernel: {}", abs.display());
+            yield (os_key, abs)
 
+        }
+    }
+}
+
+enum ImageType {
+    Bios,
+    Uefi,
+}
+
+fn create_image(image_type: ImageType, kernel: &PathBuf, path: &PathBuf) -> Result<(), Box<dyn Error>> {
+    match image_type {
+        ImageType::Bios => Ok(bootloader::BiosBoot::new(&kernel).create_disk_image(&path)?),
+        ImageType::Uefi => Ok(bootloader::UefiBoot::new(&kernel).create_disk_image(&path)?),
+    }
+}
+
+
+fn main() -> ExitCode {
     // set by cargo, build scripts should use this directory for output files
     let _out_dir = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
 
-    // Choose kernel: prefer CUSTOM_KERNEL_PATH, else artifact dependency
-    let kernel = if let Some(custom) = std::env::var_os("CUSTOM_KERNEL_PATH") {
-        let p = PathBuf::from(custom);
-        let abs = std::fs::canonicalize(&p).unwrap_or(p.clone());
-        println!("cargo:warning=Using custom kernel: {}", abs.display());
-        // Re-run if that file changes
-        println!("cargo:rerun-if-changed={}", abs.display());
-        abs
-    } else {
-        let p = PathBuf::from(
-            std::env::var_os("CARGO_BIN_FILE_LIBKERNEL")
-                .expect("CARGO_BIN_FILE_LIBKERNEL not set"),
-        );
-        let abs = std::fs::canonicalize(&p).unwrap_or(p.clone());
-        println!("cargo:warning=Using artifact kernel: {}", abs.display());
-        println!("cargo:rerun-if-changed={}", abs.display());
-        abs
-    };
+    for (kernel_name, kernel_path) in get_kernels(std::env::vars_os()) {
 
-    // create an UEFI disk image (optional)
-    let uefi_path = _out_dir.join("uefi.img");
-    bootloader::UefiBoot::new(&kernel).create_disk_image(&uefi_path).unwrap();
+        println!("cargo:warning=Creating images for kernel: {}", kernel_name);
 
-    // create a BIOS disk image
-    let bios_path = _out_dir.join("bios.img");
-    bootloader::BiosBoot::new(&kernel).create_disk_image(&bios_path).unwrap();
+        let bios_image_path = _out_dir.join(format!("{}.bios.img", kernel_name));
+        let uefi_image_path = _out_dir.join(format!("{}.uefi.img", kernel_name));
 
-    // pass the disk image paths as env variables to the `main.rs`
-    println!("cargo:rustc-env=UEFI_PATH={}", uefi_path.display());
-    println!("cargo:rustc-env=BIOS_PATH={}", bios_path.display());
+        create_image(ImageType::Bios, &kernel_path, &bios_image_path).unwrap();
+        create_image(ImageType::Uefi, &kernel_path, &uefi_image_path).unwrap();
+
+        println!("cargo:warning=Created BIOS image: {}", bios_image_path.display());
+        println!("cargo:warning=Created UEFI image: {}", uefi_image_path.display());
+
+        // Declare output files as build script outputs
+        println!("cargo:rerun-if-changed={}", bios_image_path.display());
+        println!("cargo:rerun-if-changed={}", uefi_image_path.display()); 
+
+        // Declare bios and uefi images as outputs
+        println!("cargo:rustc-env=BIOS_IMAGE_{}={}", kernel_name, bios_image_path.display());
+        println!("cargo:rustc-env=UEFI_IMAGE_{}={}", kernel_name, uefi_image_path.display());
+    }
+
+    ExitCode::SUCCESS
 }

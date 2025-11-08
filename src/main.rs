@@ -1,46 +1,34 @@
 // src/main.rs
 
-use ovmf_prebuilt::{Arch, FileType, Source, Prebuilt};
-
-fn main() {
-    // read env variables that were set in build script
-    let uefi_path = env!("UEFI_PATH");
-    let bios_path = env!("BIOS_PATH");
-    
-    // choose whether to start the UEFI or BIOS image
-    let uefi = false;
+use std::path::{Path, PathBuf};
+mod qemu_virtual_machine;
 
 
-    let prebuilt = Prebuilt::fetch(Source::LATEST, "target/ovmf")
-        .expect("failed to update prebuilt");
-    let uefi_bios = prebuilt.get_file(Arch::X64, FileType::Code);
+fn main() -> Result<(), std::io::Error> {
+    qemu_virtual_machine::boot_qemu( env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_kernel"), true)?;
+    Ok(())
+}
 
-    let mut cmd = std::process::Command::new("/usr/libexec/qemu-kvm");
-    // let mut cmd = std::process::Command::new("qemu-system-x86_64");
-    if uefi {
-        println!("Using UEFI bios: {}", uefi_bios.display());
-        println!("Using UEFI image: {}", uefi_path);
-        cmd.arg("-bios").arg(uefi_bios);
-        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={uefi_path}"));
-
-    } else {
-        println!("Using BIOS image: {}", bios_path);
-        cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={bios_path}"));        
-    }
-    cmd.arg("-device").arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
-    cmd.arg("-serial").arg("stdio");
+#[cfg(test)]
+mod tests {
+    use crate::qemu_virtual_machine;
 
 
-    if std::env::var_os("QEMU_GDB").is_some() {
-        eprintln!("QEMU GDB stub enabled on :1234 (CPU paused)");
-        cmd.args(["-S", "-gdb", "tcp::1234"]);
-        cmd.args(["-no-reboot", "-no-shutdown"]);
-        cmd.args(["-d", "int,guest_errors,cpu_reset"]);
-        cmd.args(["-accel", "tcg"]);
+    #[test]
+    fn heap_allocation() -> Result<(), std::io::Error> {
+        qemu_virtual_machine::boot_qemu(
+            env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_test_heap_allocation"),
+            false,
+        )?;
+        Ok(())
     }
 
-
-    print!("Starting QEMU: {:?}\n", cmd);
-    let mut child = cmd.spawn().unwrap();
-    child.wait().unwrap();
+    #[test]
+    fn stack_overflow() -> Result<(), std::io::Error> {
+        qemu_virtual_machine::boot_qemu(
+            env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_test_stack_overflow"),
+            false,
+        )?;
+        Ok(())
+    }
 }

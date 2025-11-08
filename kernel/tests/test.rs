@@ -6,7 +6,9 @@
 
 use libkernel::println;
 
-unsafe fn kernel_init() -> ! {
+bootloader_api::entry_point!(kernel_test_init, config = &libkernel::CONFIG);
+
+pub fn kernel_test_init(_boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     println!("OK1234");
 

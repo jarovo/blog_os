@@ -1,10 +1,10 @@
 [package]
-name = "libkernel"
+name = "rustyk"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bootloader_api = "0.11"
+bootloader_api = "0.11.12"
 embedded-graphics = "0.8.1"
 linked_list_allocator = "0.10.5"
 nostd = "0.1.5"
@@ -21,23 +21,17 @@ x86_64 = "0.15.2"
 version = "1.5.0"
 features = ["spin_no_std"]
 
-[lib]
-name = "libkernel"
-path = "src/lib.rs"
-test = false
 
 [[bin]]
-name = "libkernel"
-test = false
-harness = false
+name = "test_heap_allocation"
+
+[[bin]]
+name = "test_stack_overflow"
+
 
 [features]
 with-tests = []
 
 
-[[test]]
-name = "stack_overflow"
-harness = false
-
-[patch.crates-io]
-vga = { path = "../vga" }
+[profile.release]
+panic = "abort"
