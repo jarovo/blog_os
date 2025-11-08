@@ -1,5 +1,5 @@
 pub fn boot_qemu(disk_image_path: &str) -> Result<(), std::io::Error> {
-    let mut cmd = std::process::Command::new("qemu-kvm");
+    let mut cmd = std::process::Command::new("qemu-system-x86_64");
     
     println!("Using BIOS image: {}", disk_image_path);
     cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={disk_image_path}"));
