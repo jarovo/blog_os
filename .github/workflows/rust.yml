@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+    - name: Set up qemu
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
     - name: Run tests
       run: cargo test --verbose

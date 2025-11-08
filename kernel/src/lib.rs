@@ -75,10 +75,11 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     {
         println!("In test mode!");
         run_tests();
+        println!("It did not crash!");
+        qemu_exit_success();
     }
+    crate::hlt_loop();
     
-    println!("It did not crash!");
-    qemu_exit_success();
 }
 
 
