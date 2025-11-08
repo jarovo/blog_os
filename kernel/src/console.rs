@@ -57,6 +57,7 @@ struct ConsoleFramebuffer {
     fbwidth: usize,
     fbheight: usize,
     fbstride: usize,
+    bytes_per_pixel: usize,
     pixel_format: PixelFormat,
 }
 
@@ -89,6 +90,7 @@ impl Console {
                 fbwidth: fb_info.width,
                 fbheight: fb_info.height,
                 fbstride: fb_info.stride,
+                bytes_per_pixel: fb_info.bytes_per_pixel,
                 pixel_format: fb_info.pixel_format,
             },
             buffer: ScrollbackBuffer::new(100), // 100 lines of scrollback
@@ -96,8 +98,7 @@ impl Console {
     }
 
     fn clear_screen(&mut self) {
-        const BYTES_PER_PIXEL: usize = 3; // Rgb888 is 3 bytes per pixel
-        let fbsize = self.console_framebuffer.fbstride * self.console_framebuffer.fbheight * BYTES_PER_PIXEL;
+        let fbsize = self.console_framebuffer.fbstride * self.console_framebuffer.fbheight * self.console_framebuffer.bytes_per_pixel;
         let fb = unsafe { core::slice::from_raw_parts_mut(self.console_framebuffer.fbptr, fbsize) };
         for byte in fb.iter_mut() {
             *byte = 0;
@@ -141,12 +142,11 @@ impl DrawTarget for ConsoleFramebuffer {
             // Convert point positions to usize
             let x = px as usize;
             let y = py as usize;
-            const BYTES_PER_PIXEL: usize = 3; // Rgb888 is 3 bytes per pixel
 
             if (x < self.fbwidth) && (y < self.fbheight) {
                 /* Calculate offset into framebuffer */
-                let offset = (y * (self.fbstride * BYTES_PER_PIXEL)) + (x * BYTES_PER_PIXEL);
-                let fbsize = self.fbstride * self.fbheight * BYTES_PER_PIXEL;
+                let offset = (y * (self.fbstride * self.bytes_per_pixel)) + (x * self.bytes_per_pixel);
+                let fbsize = self.fbstride * self.fbheight * self.bytes_per_pixel;
                 let fb = unsafe { core::slice::from_raw_parts_mut(self.fbptr, fbsize) };
                 fb[offset + 1] = color.g();
 
