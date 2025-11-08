@@ -5,7 +5,7 @@ mod qemu_virtual_machine;
 
 
 fn main() -> Result<(), std::io::Error> {
-    qemu_virtual_machine::boot_qemu( env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_kernel"))?;
+    qemu_virtual_machine::boot_qemu( env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_kernel"), true)?;
     Ok(())
 }
 
@@ -18,6 +18,7 @@ mod tests {
     fn heap_allocation() -> Result<(), std::io::Error> {
         qemu_virtual_machine::boot_qemu(
             env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_test_heap_allocation"),
+            false,
         )?;
         Ok(())
     }
@@ -26,6 +27,7 @@ mod tests {
     fn stack_overflow() -> Result<(), std::io::Error> {
         qemu_virtual_machine::boot_qemu(
             env!("BIOS_IMAGE_CARGO_BIN_FILE_RUSTYK_test_stack_overflow"),
+            false,
         )?;
         Ok(())
     }

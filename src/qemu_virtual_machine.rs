@@ -1,11 +1,20 @@
-pub fn boot_qemu(disk_image_path: &str) -> Result<(), std::io::Error> {
+use std::fs::OpenOptions;
+
+pub fn boot_qemu(disk_image_path: &str, graphic: bool) -> Result<(), std::io::Error> {
     let mut cmd = std::process::Command::new("qemu-system-x86_64");
     
     println!("Using BIOS image: {}", disk_image_path);
+    if let Ok(_) = OpenOptions::new().write(true)
+                             .read(true)
+                             .open("/dev/kvm") {
+        cmd.arg("-enable-kvm");
+    }
+    if !graphic {
+        cmd.arg("-nographic");
+    }
     cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={disk_image_path}"));
 
     cmd.arg("-device").arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
-    cmd.arg("-serial").arg("stdio");
 
     if std::env::var_os("QEMU_GDB").is_some() {
         eprintln!("QEMU GDB stub enabled on :1234 (CPU paused)");
