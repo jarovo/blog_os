@@ -9,9 +9,15 @@ pub fn boot_qemu(disk_image_path: &str, graphic: bool) -> Result<(), std::io::Er
                              .open("/dev/kvm") {
         cmd.arg("-enable-kvm");
     }
-    if !graphic {
-        cmd.arg("-nographic");
+    match graphic {
+        true => {
+            cmd.arg("-serial").arg("stdio");
+        }
+        false => {
+            cmd.arg("-nographic");
+        }
     }
+    
     cmd.arg("-drive").arg(format!("if=virtio,format=raw,readonly=on,file={disk_image_path}"));
 
     cmd.arg("-device").arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
