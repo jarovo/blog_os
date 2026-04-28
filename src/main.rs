@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use clap::{Command, arg};
 use rustyk_build::qemu_virtual_machine::QemuVirtualMachine;
 

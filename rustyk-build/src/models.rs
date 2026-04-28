@@ -77,7 +77,7 @@ impl ArtifactDefinition {
 
     pub fn build_image(&self, build_kind: BootKind) -> Result<Image> {
         let out_image_path = PathBuf::from(std::env::var("OUT_DIR")?)
-            .with_file_name(format!("{}-{}.img", self.declaration.name, match build_kind {
+            .join(format!("{}-{}.img", self.declaration.name, match build_kind {
                 BootKind::Uefi => "uefi",
                 BootKind::Bios => "bios",
             }));

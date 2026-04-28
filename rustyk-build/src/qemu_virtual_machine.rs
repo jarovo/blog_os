@@ -40,7 +40,7 @@ impl QemuVirtualMachine {
 
         if let Some(gdb_port) = self.qemu_gdb {
             eprintln!("QEMU GDB stub enabled on :{} (CPU paused)", gdb_port);
-            cmd.args(["-S", "-gdb", format!("tcp::{}", gdb_port).as_str()]);
+            cmd.args(["-S", "-gdb", &format!("tcp::{}", gdb_port)]);
             cmd.args(["-no-reboot", "-no-shutdown"]);
             cmd.args(["-d", "int,guest_errors,cpu_reset"]);
             cmd.args(["-accel", "tcg"]);
