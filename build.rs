@@ -1,5 +1,5 @@
 use std::{process::ExitCode};
-use rustyk_build::models::{Build, Image, ArtifactDeclaration, ArtifactDefinition, BootKind};
+use rustyk_build::models::Build;
 
 fn main() -> ExitCode {
     let dep = "rustyk";
