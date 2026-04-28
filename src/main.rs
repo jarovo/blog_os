@@ -64,7 +64,7 @@ fn main() -> Result<()> {
                 .try_for_each(|image| QemuVirtualMachine::builder()
                     .with_bootable_image(image)
                     .with_qemu_gdb(debug_port)
-                    .with_graphic(true)
+                    .with_graphic(false)
                     .build()
                     .run())?;
         }
