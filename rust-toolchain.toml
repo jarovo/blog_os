@@ -1,4 +1,13 @@
 [toolchain]
 channel = "nightly"
-components = ["rustfmt", "clippy", "llvm-tools"]
+
+# Added rust-src to fix 
+#  error: failed to compile `bootloader-x86_64-uefi v0.11.15`, intermediate artifacts can be found at `/tmp/cargo-installJvcTi6`.
+#  To reuse those artifacts with a future compilation, set the environment variable `CARGO_BUILD_BUILD_DIR` to that path.
+#  Caused by:
+#    "/home/runner/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/Cargo.lock" does not exist, unable to build with the standard library, try:
+#            rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+#
+# happening in the github actions workflow when building the bootloader dependency.
+components = ["rustfmt", "clippy", "rust-src", "llvm-tools"]
 targets = ["x86_64-unknown-none", "x86_64-unknown-uefi"]
