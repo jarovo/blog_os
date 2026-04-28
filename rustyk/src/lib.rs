@@ -21,9 +21,6 @@ use x86_64::{VirtAddr, structures::paging::Translate, structures::paging::Page, 
 use core::fmt::Write;
 pub mod test;
 
-use crate::cpu::qemu_exit_success;
-
-
 pub fn kernel_init() {
     gdt::init();
     interrupts::init_idt();
@@ -65,13 +62,14 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     let mut console = console::Console::new_from_bootinfo(
         boot_info.framebuffer.as_mut().expect("Failed to create console: No framebuffer found"));
+    console.clear_screen().expect("Failed to clear screen");
 
-    for i in 0..10 {
-        writeln!(console, "Hello World! {}", i).ok();
+    for i in 0..100 {
+        writeln!(console, "Hello World! The {}th iteration of writing to the console.", i).ok();
     }
  
 
-    #[cfg(feature = "with-tests")]
+    #[cfg(feature = "with-self-tests")]
     {
         println!("In test mode!");
         run_tests();
@@ -114,14 +112,14 @@ where
 	}
 }
 
-#[cfg(feature = "with-tests")]
+#[cfg(feature = "with-self-tests")]
 fn test_breakpoint_exception() {
     // invoke a breakpoint exception
     x86_64::instructions::interrupts::int3();
 }
 
 
-#[cfg(feature = "with-tests")]
+#[cfg(feature = "with-self-tests")]
 fn test_trivial() {
     assert_eq!(1, 1);
 }
@@ -134,7 +132,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     println!("[test did not panic]");
 }
 
-#[cfg(feature = "with-tests")]
+#[cfg(feature = "with-self-tests")]
 pub fn run_tests() {
     let tests: &[&dyn Testable] = &[
         &test_breakpoint_exception,

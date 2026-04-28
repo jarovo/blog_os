@@ -1,20 +1,19 @@
 #![feature(custom_test_frameworks)]
-#![test_runner(libkernel::test_runner)]
+#![test_runner(rustyk::test_runner)]
 #![feature(format_args_nl)]
 #![no_main]
 #![no_std]
 
-use libkernel::println;
+use rustyk::println;
 
-bootloader_api::entry_point!(kernel_test_init, config = &libkernel::CONFIG);
+bootloader_api::entry_point!(kernel_test_init, config = &rustyk::CONFIG);
 
 pub fn kernel_test_init(_boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     println!("OK1234");
 
-    libkernel::cpu::qemu_exit_success();
+    rustyk::cpu::qemu_exit_success();
 }
-
 
 
 #[cfg(test)]

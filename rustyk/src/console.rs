@@ -2,7 +2,10 @@
 
 use core::fmt::{self, Write};
 use alloc::string::ToString;
+use embedded_graphics::geometry::Dimensions;
+use embedded_graphics::primitives::Rectangle;
 use embedded_graphics::text::renderer::TextRenderer;
+use embedded_graphics::prelude::PointsIter;
 use x86_64::instructions::interrupts;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -36,8 +39,8 @@ impl ScrollbackBuffer {
             max_lines,
         }
     }
-
-    pub fn push_string(&mut self, text: String) {
+    
+    pub fn push_string(&mut self, text: &str) {
         for line in text.lines() {
             self.lines.push(line.to_string());
         }
@@ -76,9 +79,12 @@ impl OriginDimensions for ConsoleFramebuffer {
     }
 }
 
+#[derive(Debug)]
 pub enum ConsoleError {
     BoundsError,
 }
+
+
 
 impl Console {
     pub fn new_from_bootinfo(frame_buffer: &mut FrameBuffer) -> Self {
@@ -93,39 +99,38 @@ impl Console {
                 bytes_per_pixel: fb_info.bytes_per_pixel,
                 pixel_format: fb_info.pixel_format,
             },
-            buffer: ScrollbackBuffer::new(100), // 100 lines of scrollback
+            buffer: ScrollbackBuffer::new(50), // 50 lines of scrollback
         }
     }
 
-    fn clear_screen(&mut self) {
-        let fbsize = self.console_framebuffer.fbstride * self.console_framebuffer.fbheight * self.console_framebuffer.bytes_per_pixel;
-        let fb = unsafe { core::slice::from_raw_parts_mut(self.console_framebuffer.fbptr, fbsize) };
-        for byte in fb.iter_mut() {
-            *byte = 0;
-        }
+    pub fn clear_screen(&mut self) -> Result<(), ConsoleError> {
+        self.console_framebuffer.clear(Rgb888::BLACK)?;
+        Ok(())
     }
 
-    fn redraw(&mut self) {
-        self.clear_screen();
+    fn redraw(&mut self) -> Result<(), ConsoleError> {
         let text_style = MonoTextStyle::new(&FONT_6X10, Rgb888::WHITE);
         let mut y = text_style.line_height() as i32; // Start a bit down from the top
         for line in self.buffer.lines() {
-            Text::new(line, Point::new(0, y), text_style).draw(&mut self.console_framebuffer).ok();
+            Text::new(line, Point::new(0, y), text_style).draw(&mut self.console_framebuffer)?;
             y += text_style.line_height() as i32;
         }
-    }
-
-
-    pub fn write_str<'a>(&mut self, s: &'a str) -> Result<(), ConsoleError> {
-        self.buffer.push_string(s.to_string());
-        self.redraw();
         Ok(())
     }
+
+    pub fn write_str<'a>(&mut self, s: &'a str) -> Result<(), ConsoleError> {
+        self.buffer.push_string(s);
+        self.clear_screen()?;
+        self.redraw()?;
+        Ok(())
+    }
+
 }
 
 impl fmt::Write for Console {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.write_str(s).map_err(|_| fmt::Error)
+    fn write_str(&mut self, s: &str) -> Result<(), core::fmt::Error> {
+        self.write_str(s).map_err(|_| core::fmt::Error)?;
+        Ok(())
     }
 }
 
@@ -166,6 +171,27 @@ impl DrawTarget for ConsoleFramebuffer {
             }
         }
         Ok(())
+    }
+
+    
+    fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Self::Color>,
+    {
+        // Clamp area to drawable part of the display target
+        let drawable_area = area.intersection(&self.bounding_box());
+
+        // Check that there are visible pixels to be drawn
+        if drawable_area.size != Size::zero() {
+            self.draw_iter(
+                area.points()
+                    .zip(colors)
+                     //.filter(|(pos, _color)| drawable_area.contains(*pos))
+                    .map(|(pos, color)| Pixel(pos, color)),
+            )
+        } else {
+            Ok(())
+        }
     }
 }
 
