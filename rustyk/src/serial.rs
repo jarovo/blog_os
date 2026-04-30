@@ -1,43 +1,44 @@
 use x86_64::instructions::port::Port;
 use core::fmt;
+use lazy_static::lazy_static;
+use spin::Mutex;
 
-pub fn serial_init(base: u16) {
-    unsafe {
-        let mut port = Port::<u8>::new(base + 1); // COM1 + 1 = interrupt enable
-        port.write(0x00); // disable interrupts
-
-        let mut port = Port::<u8>::new(base + 3); // line control
-        port.write(0x80); // enable DLAB
-
-        let mut port = Port::<u8>::new(base + 0);
-        port.write(0x03); // baud divisor low byte (38400 baud)
-
-        let mut port = Port::<u8>::new(base + 1);
-        port.write(0x00); // high byte
-
-        let mut port = Port::<u8>::new(base + 3);
-        port.write(0x03); // 8 bits, no parity, one stop bit
-
-        let mut port = Port::<u8>::new(base + 2);
-        port.write(0xC7); // enable FIFO
-
-        let mut port = Port::<u8>::new(base + 4);
-        port.write(0x0B); // IRQs enabled, RTS/DSR set
-    }
-}
-
-
-pub struct Writer {
+pub struct SerialPortWriter {
     line_status: Port::<u8>,
     tx: Port::<u8>,
 }
 
-impl Writer {
+impl SerialPortWriter {
     pub fn new(base: u16) -> Self {
-        serial_init(base);
+        Self::serial_init(base);
         Self {
             line_status: Port::new(base + 5),
             tx: Port::new(base),
+        }
+    }
+
+    pub fn serial_init(base: u16) {
+        unsafe {
+            let mut port = Port::<u8>::new(base + 1); // COM1 + 1 = interrupt enable
+            port.write(0x00); // disable interrupts
+
+            let mut port = Port::<u8>::new(base + 3); // line control
+            port.write(0x80); // enable DLAB
+
+            let mut port = Port::<u8>::new(base + 0);
+            port.write(0x03); // baud divisor low byte (38400 baud)
+
+            let mut port = Port::<u8>::new(base + 1);
+            port.write(0x00); // high byte
+
+            let mut port = Port::<u8>::new(base + 3);
+            port.write(0x03); // 8 bits, no parity, one stop bit
+
+            let mut port = Port::<u8>::new(base + 2);
+            port.write(0xC7); // enable FIFO
+
+            let mut port = Port::<u8>::new(base + 4);
+            port.write(0x0B); // IRQs enabled, RTS/DSR set
         }
     }
 
@@ -72,15 +73,19 @@ impl Writer {
                 // not part of printable ASCII range
                 _ => self.write_byte(0xfe),
             }
-
         }
     }
 }
 
 
-impl fmt::Write for Writer {
+impl fmt::Write for SerialPortWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
         Ok(())
     }
 }
+
+lazy_static! {
+    pub static ref SERIAL_PORT_COM1: Mutex<SerialPortWriter> = Mutex::new(SerialPortWriter::new(0x3F8)); // COM1
+}
+
