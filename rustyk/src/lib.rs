@@ -17,12 +17,10 @@ pub mod cpu;
 mod interrupts;
 pub mod gdt;
 pub mod panicking;
-use x86_64::{VirtAddr, structures::paging::Translate, structures::paging::Page, structures::paging::OffsetPageTable};
+use x86_64::{VirtAddr, structures::paging::{Translate, Page, OffsetPageTable}};
 use core::fmt::Write;
+
 pub mod test;
-
-use crate::cpu::qemu_exit_success;
-
 
 pub fn kernel_init() {
     gdt::init();
@@ -34,44 +32,50 @@ pub fn kernel_init() {
 pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     kernel_init();
+    let mut console = console::Console::new();
 
     let phys_mem_offset = VirtAddr::new(
-        boot_info.physical_memory_offset.into_option().expect("No physical memory offset"));
+        boot_info.physical_memory_offset.into_option()
+        .expect("Physical memory offset is required but not provided by the bootloader."));
+    
     println!("Physical memory offset: {:#016x}", phys_mem_offset);
 
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_regions) };
 
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed.");
+    allocator::init_heap(&mut mapper, &mut frame_allocator)
+        .expect("Heap initialization is required but failed.");
 
-    println!("Boot info API version: {}.{}.{}",
+    writeln!(console, "Boot info API version: {}.{}.{}",
              boot_info.api_version.version_major(),
              boot_info.api_version.version_minor(),
-             boot_info.api_version.version_patch());
+             boot_info.api_version.version_patch()).unwrap();
 
     // Display memory regions.
     for region in boot_info.memory_regions.iter() {
-        println!("Memory region: {:#016x} - {:#016x} ({:?})",
+        writeln!(console, "Memory region: {:#016x} - {:#016x} ({:?})",
                  region.start,
                  region.end,
-                 region.kind);
+                 region.kind).unwrap();
     }
 
-    print_mappings(boot_info, &mut mapper);
+    print_mappings(&mut console, boot_info, &mut mapper);
 
     // Map an unused page.
     let page = Page::containing_address(VirtAddr::new(0xdeadbeef000));
     memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
 
-    let mut console = console::Console::new_from_bootinfo(
-        boot_info.framebuffer.as_mut().expect("Failed to create console: No framebuffer found"));
+    let fb_info = boot_info.framebuffer.take().expect("Expected to find a framebuffer.");
+    console.add_screen(console::Screen::BootloaderScreen(console::BootloaderScreen::new(fb_info)));
+    //console.add_screen(console::Screen::VGAScreen1280x800x256(console::VGAScreen1280x800x256::new()));
+    console.clear_screen().expect("Expected to be able to clear the screen.");
 
-    for i in 0..10 {
-        writeln!(console, "Hello World! {}", i).ok();
+    for i in 0..100 {
+        writeln!(console, "Hello World! The {}th iteration of writing to the console.", i).ok();
     }
  
 
-    #[cfg(feature = "with-tests")]
+    #[cfg(feature = "with-self-tests")]
     {
         println!("In test mode!");
         run_tests();
@@ -83,11 +87,14 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 }
 
 
-fn print_mappings(boot_info: &bootloader_api::BootInfo, mapper: &OffsetPageTable) {
-        for address in boot_info.memory_regions.iter().map(|r| r.start) {
+fn print_mappings(console: &mut console::Console,
+                           boot_info: &bootloader_api::BootInfo,
+                           mapper: &OffsetPageTable)
+{
+    for address in boot_info.memory_regions.iter().map(|r| r.start) {
         let virt = VirtAddr::new(address);
         let phys = mapper.translate_addr(virt);
-        println!("{:?} -> {:?}", virt, phys);
+        writeln!(console, "{:?} -> {:?}", virt, phys).unwrap();
     }
 }
 
@@ -114,14 +121,14 @@ where
 	}
 }
 
-#[cfg(feature = "with-tests")]
+#[cfg(feature = "with-self-tests")]
 fn test_breakpoint_exception() {
     // invoke a breakpoint exception
     x86_64::instructions::interrupts::int3();
 }
 
 
-#[cfg(feature = "with-tests")]
+#[cfg(feature = "with-self-tests")]
 fn test_trivial() {
     assert_eq!(1, 1);
 }
@@ -134,7 +141,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     println!("[test did not panic]");
 }
 
-#[cfg(feature = "with-tests")]
+#[cfg(feature = "with-self-tests")]
 pub fn run_tests() {
     let tests: &[&dyn Testable] = &[
         &test_breakpoint_exception,

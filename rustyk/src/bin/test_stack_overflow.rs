@@ -2,7 +2,7 @@
 #![no_std]
 #![no_main]
 
-use rustyk::{print, println, cpu};
+use rustyk::println;
 use lazy_static::lazy_static;
 use x86_64::structures::idt::InterruptDescriptorTable;
 use x86_64::structures::idt::InterruptStackFrame;
