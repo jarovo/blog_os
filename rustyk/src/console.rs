@@ -3,22 +3,17 @@
 
 use core::fmt::{Write, Arguments};
 use x86_64::instructions::interrupts;
-use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
-
-use embedded_graphics::geometry::Dimensions;
-use embedded_graphics::primitives::Rectangle;
-use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::prelude::PointsIter;
-
 
 use bootloader_api::info::FrameBuffer;
 use bootloader_api::info::PixelFormat;
 
+use embedded_graphics::geometry::Dimensions;
+use embedded_graphics::primitives::Rectangle;
+use embedded_graphics::text::renderer::TextRenderer;
 use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
 use embedded_graphics::text::Text;
-
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{OriginDimensions, Point, Size};
 use embedded_graphics::pixelcolor::Rgb888;

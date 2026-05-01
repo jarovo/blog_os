@@ -18,9 +18,16 @@ mod interrupts;
 pub mod gdt;
 pub mod panicking;
 use x86_64::{VirtAddr, structures::paging::{Translate, Page, OffsetPageTable}};
+use alloc::sync::Arc;
 use core::fmt::Write;
+use spin::Mutex;
+use task::{Task, simple_executor::SimpleExecutor, sleep_clock_ticks};
+
+use crate::task::Ticker;
 
 pub mod test;
+pub mod task;
+pub mod clock;
 
 pub fn kernel_init() {
     gdt::init();
@@ -70,10 +77,13 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     //console.add_screen(console::Screen::VGAScreen1280x800x256(console::VGAScreen1280x800x256::new()));
     console.clear_screen().expect("Expected to be able to clear the screen.");
 
-    for i in 0..100 {
-        writeln!(console, "Hello World! The {}th iteration of writing to the console.", i).ok();
-    }
- 
+    let shared_console = Arc::new(Mutex::new(console));
+
+    let mut executor = SimpleExecutor::new();
+    executor.spawn(Task::new(task_42_caller(shared_console.clone())));
+    executor.spawn(Task::new(console_printing_task(shared_console.clone(), 1)));
+    executor.spawn(Task::new(console_printing_task(shared_console.clone(), 2)));
+    executor.run(); 
 
     #[cfg(feature = "with-self-tests")]
     {
@@ -86,6 +96,27 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     
 }
 
+async fn task_42(console: Arc<Mutex<console::Console>>) -> u32 {
+    writeln!(console.lock(), "Task 42 is running!").unwrap();
+    42
+}
+
+async fn task_42_caller(console: Arc<Mutex<console::Console>>) {
+    let result = task_42(console.clone()).await;
+    writeln!(console.lock(), "Task 42 returned: {}", result).unwrap();
+}
+
+async fn console_printing_task(console: Arc<Mutex<console::Console>>, task_id: u64) {
+    let mut count = 0;
+    let mut ticker = Ticker::new(100); // Tick every 100 clock ticks
+    loop {
+        {
+            count += 1;
+            writeln!(console.lock(), "Task {} is running! Count: {}. Clock ticks: {}", task_id, count, clock::Clock.ticks()).unwrap();
+            ticker.tick().await;
+        }
+    }
+}
 
 fn print_mappings(console: &mut console::Console,
                            boot_info: &bootloader_api::BootInfo,

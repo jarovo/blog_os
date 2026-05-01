@@ -1,8 +1,9 @@
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
-use crate::{print, println};
 use lazy_static::lazy_static;
+use crate::{print, println};
 use crate::gdt;
 use crate::hlt_loop;
+use crate::clock::Clock;
 use pic8259::ChainedPics;
 use spin;
 
@@ -76,6 +77,8 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
     print!(".");
+
+    Clock.tick();
 
     unsafe {
         PICS.lock()
