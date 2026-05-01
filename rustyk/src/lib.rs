@@ -21,13 +21,14 @@ use x86_64::{VirtAddr, structures::paging::{Translate, Page, OffsetPageTable}};
 use alloc::sync::Arc;
 use core::fmt::Write;
 use spin::Mutex;
-use task::{Task, simple_executor::SimpleExecutor, sleep_clock_ticks};
+use task::{Task, executor::Executor};
 
-use crate::task::Ticker;
+use crate::{keyboard::print_keypresses, clock::Ticker};
 
 pub mod test;
 pub mod task;
 pub mod clock;
+pub mod keyboard;
 
 pub fn kernel_init() {
     gdt::init();
@@ -79,8 +80,9 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     let shared_console = Arc::new(Mutex::new(console));
 
-    let mut executor = SimpleExecutor::new();
+    let mut executor = Executor::new();
     executor.spawn(Task::new(task_42_caller(shared_console.clone())));
+    executor.spawn(Task::new(print_keypresses(shared_console.clone())));
     executor.spawn(Task::new(console_printing_task(shared_console.clone(), 1)));
     executor.spawn(Task::new(console_printing_task(shared_console.clone(), 2)));
     executor.run(); 
@@ -91,9 +93,7 @@ pub fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         run_tests();
         println!("It did not crash!");
         qemu_exit_success();
-    }
-    crate::hlt_loop();
-    
+    }    
 }
 
 async fn task_42(console: Arc<Mutex<console::Console>>) -> u32 {

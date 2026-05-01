@@ -193,7 +193,6 @@ impl DrawTarget for BootloaderScreen {
         // Check that there are visible pixels to be drawn
         if drawable_area.size != Size::zero() {
             let fb_info = self.frame_buffer.info();
-            let fbsize: usize = fb_info.stride * fb_info.height as usize * fb_info.bytes_per_pixel as usize;
 
             const RGB_SETTER: fn(&mut [u8], usize, Rgb888) = |fb: &mut [u8], offset: usize, color: Rgb888| {
                 (fb[offset], fb[offset + 1], fb[offset + 2]) = (color.r(), color.g(), color.b());
