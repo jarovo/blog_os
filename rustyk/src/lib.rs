@@ -14,12 +14,12 @@ pub mod memory;
 pub mod console;
 mod serial;
 pub mod cpu;
-mod interrupts;
+mod irq_handlers;
 pub mod gdt;
 pub mod panicking;
 use x86_64::{VirtAddr, structures::paging::{Translate, Page, OffsetPageTable}};
 use alloc::sync::Arc;
-use core::fmt::Write;
+use core::{fmt::Write, panic, time::Duration};
 use spin::Mutex;
 use task::{Task, executor::Executor};
 
@@ -29,11 +29,12 @@ pub mod test;
 pub mod task;
 pub mod clock;
 pub mod keyboard;
+pub mod timer;
 
 pub fn kernel_init() {
     gdt::init();
-    interrupts::init_idt();
-    unsafe { interrupts::PICS.lock().initialize() };
+    irq_handlers::init_idt();
+    unsafe { irq_handlers::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
 }
 
@@ -108,12 +109,16 @@ async fn task_42_caller(console: Arc<Mutex<console::Console>>) {
 
 async fn console_printing_task(console: Arc<Mutex<console::Console>>, task_id: u64) {
     let mut count = 0;
-    let mut ticker = Ticker::new(100); // Tick every 100 clock ticks
+    let mut ticker = Ticker::new(Duration::from_millis(100));
     loop {
         {
             count += 1;
-            writeln!(console.lock(), "Task {} is running! Count: {}. Clock ticks: {}", task_id, count, clock::Clock.ticks()).unwrap();
+            writeln!(console.lock(), "Task {} is running! Count: {}. Clock instant: {:?}", task_id, count, clock::Instant::now()).unwrap();
             ticker.tick().await;
+            if count == 5 * task_id {
+                writeln!(console.lock(), "Task {} is done!", task_id).unwrap();
+                panic!("Task {} is panicking to demonstrate that panics in one task don't affect others!", task_id);
+            }
         }
     }
 }

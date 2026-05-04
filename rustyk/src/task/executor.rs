@@ -1,9 +1,12 @@
+use crate::{print, task::reactor::Reactor};
+
 use super::{Task, TaskId};
 use alloc::{collections::BTreeMap, sync::Arc};
-use core::task::Waker;
+use core::{panic, task::Waker, time::Duration};
 use crossbeam_queue::ArrayQueue;
 use core::task::{Context, Poll};
 use alloc::task::Wake;
+
 
 pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
@@ -12,6 +15,7 @@ pub struct Executor {
 }
 
 impl Executor {
+   
     pub fn new() -> Self {
         Executor {
             tasks: BTreeMap::new(),
@@ -20,6 +24,7 @@ impl Executor {
         }
     }
 }
+
 
 impl Executor {
     pub fn spawn(&mut self, task: Task) {
@@ -53,13 +58,17 @@ impl Executor {
                     tasks.remove(&task_id);
                     waker_cache.remove(&task_id);
                 }
-                Poll::Pending => {}
+                Poll::Pending => {
+                }
             }
         }
     }
 
     pub fn run(&mut self) -> ! {
         loop {
+            if let Err(err) = Reactor::get().lock().react(Some(Duration::from_millis(100))) {
+                panic!("Reactor error: {:?}", err);
+            }
             self.run_ready_tasks();
             self.sleep_if_idle();
         }
@@ -78,7 +87,7 @@ impl Executor {
 }
 
 
-struct TaskWaker {
+pub(crate) struct TaskWaker {
     task_id: TaskId,
     task_queue: Arc<ArrayQueue<TaskId>>,
 }

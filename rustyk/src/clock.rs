@@ -1,76 +1,70 @@
+use core::ops::Add;
 use lazy_static::lazy_static;
 use core::sync::atomic::{AtomicU64, Ordering};
-use futures_util::task::AtomicWaker;
-use futures_util::Future;
-use core::task::{Context, Poll};
-use core::pin::Pin;
+use nostd::time::Duration;
 
-static WAKER: AtomicWaker = AtomicWaker::new();
-
+use crate::task::timeout::timeout;
+use crate::task::future;
+use anyhow::Result;
 
 lazy_static! {
     static ref TICKS: AtomicU64 = AtomicU64::new(0);
 }
 
-pub struct Clock;
-
-impl Clock {
-    pub fn new() -> Self {
-        Clock
-    }
-
-    pub fn tick(&self) {
-        TICKS.fetch_add(1, Ordering::SeqCst);
-        WAKER.wake();
-    }
-
-    pub fn ticks(&self) -> u64 {
-        TICKS.load(Ordering::SeqCst)
-    }
+pub(crate) fn tick() {
+    TICKS.fetch_add(1, Ordering::SeqCst);
 }
 
-
-struct SleepFuture {
-    scheduled_ticks: u64,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Instant {
+    ticks: u64,
 }
 
-impl Future for SleepFuture {
-    type Output = ();
+impl Instant {
+    pub fn now() -> Instant {
+        Instant { ticks: TICKS.load(Ordering::SeqCst) }
+    }
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        WAKER.register(&cx.waker());
-        if Clock.ticks() >= self.scheduled_ticks {
-            WAKER.take();
-            Poll::Ready(())
+    pub fn checked_add(&self, dur: Duration) -> Option<Instant> {
+        self.ticks.checked_add(dur.as_millis() as u64).map(|ticks| Instant { ticks })
+    }
+
+    pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
+        if self.ticks >= earlier.ticks {
+            Duration::from_millis((self.ticks - earlier.ticks) as u64)
         } else {
-            Poll::Pending
+            Duration::from_millis(0)
         }
     }
 }
 
-pub fn sleep_clock_ticks(ticks: u64) -> impl Future<Output = ()> {
-    SleepFuture {
-        scheduled_ticks: Clock.ticks() + ticks,
+impl Add<Duration> for Instant {
+    type Output = Instant;
+
+    fn add(self, dur: Duration) -> Instant {
+        self.checked_add(dur).expect("Instant overflow")
     }
 }
 
 pub struct Ticker {
-    period: u64,
-    last_scheduled_tick: u64,
+    period: Duration,
+    last_scheduled_tick: Instant,
 }
 
 impl Ticker {
-    pub fn new(period: u64) -> Self {
+    pub fn new(period: Duration) -> Self {
         Ticker {
             period,
-            last_scheduled_tick: Clock.ticks(),
+            last_scheduled_tick: Instant::now(),
         }
     }
 
-    pub fn tick(&mut self) -> impl Future<Output = ()> {
-        self.last_scheduled_tick += self.period;
-        SleepFuture {
-            scheduled_ticks: self.last_scheduled_tick,
-        }
+    pub async fn tick(&mut self) {
+        self.last_scheduled_tick = self.last_scheduled_tick.checked_add(self.period).unwrap();
+        sleep(Duration::from_millis(self.last_scheduled_tick.ticks - Instant::now().ticks)).await;
     }
+}
+
+pub async fn sleep(dur: Duration) {
+    let _: Result<()> = timeout(dur,  future::pending()).await;
 }

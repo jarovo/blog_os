@@ -3,10 +3,11 @@ use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
 use x86_64::instructions::port::Port;
+use crate::task::reactor::Reactor;
 use crate::{print, println};
 use crate::gdt;
 use crate::hlt_loop;
-use crate::clock::Clock;
+use crate::clock::tick;
 
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -80,7 +81,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(
 {
     print!(".");
 
-    Clock.tick();
+    tick();
 
     unsafe {
         PICS.lock()
